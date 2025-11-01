@@ -68,27 +68,28 @@ async def normalize_article(
     """Return (normalized_text, summary, full_output)."""
     article_text = html_to_text(raw_html_or_text)
 
-    client = OpenAI(api_key=settings.OPENAI_API_KEY)
-    user_prompt = USER_TEMPLATE.format(
-        title=title or "",
-        published_at=published_at or "",
-        authors=authors or "",
-        type_hint=type_hint or "",
-        article_text=article_text,
-    )
+    # client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    # user_prompt = USER_TEMPLATE.format(
+    #     title=title or "",
+    #     published_at=published_at or "",
+    #     authors=authors or "",
+    #     type_hint=type_hint or "",
+    #     article_text=article_text,
+    # )
 
-    resp = client.responses.create(
-        model=settings.OPENAI_NORMALIZE_MODEL,
-        input=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
-    )
-    full_out: str = resp.output_text  # type: ignore[attr-defined]
-    normalized, summary = extract_normalized_body(full_out)
-    # Fallback: if no explicit normalized body, use the whole cleaned article
-    if not normalized:
-        normalized = article_text
-    return normalized, summary, full_out
+    # resp = client.responses.create(
+    #     model=settings.OPENAI_NORMALIZE_MODEL,
+    #     input=[
+    #         {"role": "system", "content": SYSTEM_PROMPT},
+    #         {"role": "user", "content": user_prompt},
+    #     ],
+    # )
+    # full_out: str = resp.output_text  # type: ignore[attr-defined]
+    # normalized, summary = extract_normalized_body(full_out)
+    # # Fallback: if no explicit normalized body, use the whole cleaned article
+    # if not normalized:
+    #     normalized = article_text
+    # return normalized, summary, full_out
+    return article_text, article_text, article_text
 
 
