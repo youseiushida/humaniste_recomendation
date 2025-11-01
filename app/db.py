@@ -33,8 +33,9 @@ async def ensure_extensions() -> None:
         # Ensure default schema and extension
         await conn.execute(text("SET search_path TO public"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-    # Create tables with a sync engine handle to be safe
-    await engine.run_sync(lambda sync_engine: ModelsBase.metadata.create_all(sync_engine))
+    # Create tables using connection.run_sync (async-safe in SQLAlchemy 2.x)
+    async with engine.begin() as conn:
+        await conn.run_sync(ModelsBase.metadata.create_all)
     # Create IVFFlat index (safe if already exists)
     try:
         async with engine.begin() as conn:
