@@ -30,20 +30,22 @@ async def ensure_extensions() -> None:
     from .models import Base as ModelsBase
 
     async with engine.begin() as conn:
-        # Create pgvector extension if not exists
+        # Ensure default schema and extension
+        await conn.execute(text("SET search_path TO public"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        # Create tables
-        await conn.run_sync(ModelsBase.metadata.create_all)
-        # Create IVFFlat index (safe if already exists)
-        try:
+    # Create tables with a sync engine handle to be safe
+    await engine.run_sync(lambda sync_engine: ModelsBase.metadata.create_all(sync_engine))
+    # Create IVFFlat index (safe if already exists)
+    try:
+        async with engine.begin() as conn:
             await conn.execute(
                 text(
                     "CREATE INDEX IF NOT EXISTS idx_article_embeddings_vec "
                     "ON article_embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)"
                 )
             )
-        except Exception:
-            # IVFFlat requires data to be present; creation can be deferred
-            pass
+    except Exception:
+        # IVFFlat requires data; creation can be deferred
+        pass
 
 
