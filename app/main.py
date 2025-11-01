@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import hmac
 import hashlib
 from typing import Any, Dict
@@ -12,6 +13,15 @@ from .service import process_one, propagate_update
 
 
 app = FastAPI(title="microCMS Related Updater")
+
+# Windows: ensure SelectorEventLoop for psycopg async
+if sys.platform.startswith("win"):
+    try:
+        import asyncio
+
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    except Exception:
+        pass
 
 
 def verify_signature(secret: str | None, body: bytes, signature: str | None) -> bool:
