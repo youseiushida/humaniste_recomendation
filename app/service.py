@@ -26,6 +26,23 @@ def _pick_title_and_body(payload: dict[str, Any]) -> tuple[str, str]:
     return title, json.dumps(payload, ensure_ascii=False)
 
 
+def _as_vector_param(vec: Any) -> list[float]:
+    """Convert possible numpy arrays or other list-likes to a Python list[float]."""
+    try:
+        to_list = getattr(vec, "tolist", None)
+        if callable(to_list):
+            return [float(x) for x in to_list()]
+    except Exception:
+        pass
+    if isinstance(vec, (list, tuple)):
+        return [float(x) for x in vec]
+    # As a last resort, try to iterate
+    try:
+        return [float(x) for x in list(vec)]  # type: ignore[arg-type]
+    except Exception as exc:
+        raise TypeError("embedding vector must be list-like") from exc
+
+
 async def upsert_article(
     session: AsyncSession,
     content_id: str,
@@ -63,7 +80,8 @@ async def neighbors(session: AsyncSession, vec: list[float], self_id: str, k: in
         LIMIT :k
         """
     )
-    res = await session.execute(q, {"self_id": self_id, "query": vec, "k": k})
+    vec_param = _as_vector_param(vec)
+    res = await session.execute(q, {"self_id": self_id, "query": vec_param, "k": k})
     return [row[0] for row in res.fetchall()]
 
 
