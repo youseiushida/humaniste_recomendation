@@ -1,0 +1,49 @@
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
+
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import text
+
+from .config import settings
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+engine: AsyncEngine = create_async_engine(
+    settings.DATABASE_URL,  # psycopg3 supports async with AsyncEngine
+    pool_pre_ping=True,
+)
+SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+
+@asynccontextmanager
+async def lifespan_session() -> AsyncIterator[AsyncSession]:
+    async with SessionLocal() as session:
+        yield session
+
+
+async def ensure_extensions() -> None:
+    # Import models here to avoid circular imports at module load time
+    from .models import Base as ModelsBase
+
+    async with engine.begin() as conn:
+        # Create pgvector extension if not exists
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        # Create tables
+        await conn.run_sync(ModelsBase.metadata.create_all)
+        # Create IVFFlat index (safe if already exists)
+        try:
+            await conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS idx_article_embeddings_vec "
+                    "ON article_embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)"
+                )
+            )
+        except Exception:
+            # IVFFlat requires data to be present; creation can be deferred
+            pass
+
+
