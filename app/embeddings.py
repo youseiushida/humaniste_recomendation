@@ -7,7 +7,7 @@ from .config import settings
 
 async def embed_text(text: str) -> List[float]:
     # Truncate to first 8,000 characters to avoid exceeding embedding model context
-    truncated_text = text[:8000]
+    truncated_text = text[:6000]
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
     resp = client.embeddings.create(
         model=settings.OPENAI_EMBED_MODEL,
