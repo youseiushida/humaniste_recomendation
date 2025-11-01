@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import List, Optional, Any
 from datetime import datetime, timezone
-from sqlalchemy import select, text, func, update, insert
+from sqlalchemy import select, text, func, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import settings
@@ -33,7 +34,7 @@ async def upsert_article(
     embedding: list[float],
 ) -> None:
     now = datetime.now(timezone.utc)
-    stmt = insert(ArticleEmbedding).values(
+    stmt = pg_insert(ArticleEmbedding).values(
         id=content_id,
         title=title,
         normalized_text=normalized_text,
