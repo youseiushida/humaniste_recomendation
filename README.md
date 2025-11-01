@@ -48,6 +48,12 @@ python -m app.initial_batch
 - URL: `<あなたの公開URL>/webhook/microcms`
 - シークレットを設定すると `x-microcms-signature`（HMAC-SHA256 / raw body）で署名検証
 
+### 権限設定（重要｜下書き対応）
+- 使用する APIキーで以下をONにしてください：
+  - コンテンツAPI: GET
+  - コンテンツAPI: 下書きコンテンツの全取得
+- 本実装は Content API の一覧取得（list）を `fields` 指定で利用し、詳細取得（get）を使用しません。draftKey は不要です。
+
 ## メモ
 - 関連記事フィールドは `relationList` 型を想定。PATCH ボディにはコンテンツID配列を送ります。
 - DBテーブル: `article_embeddings(id, title, normalized_text, embedding vector(3072), updated_at)` を使用。IVFFlat（cosine）インデックスはデータ投入後の再作成/調整を推奨。

@@ -12,6 +12,7 @@ from .normalizer import normalize_article
 from .embeddings import embed_text
 from .models import ArticleEmbedding
 
+REQUIRED_FIELDS = "id,title,contents,content,body,text,html,description,publishedAt,createdAt"
 
 def _pick_title_and_body(payload: dict[str, Any]) -> tuple[str, str]:
     title = str(payload.get("title") or payload.get("name") or "")
@@ -87,7 +88,12 @@ async def neighbors(session: AsyncSession, vec: list[float], self_id: str, k: in
 
 async def process_one(session: AsyncSession, endpoint: str, content_id: str) -> List[str]:
     cms = MicroCMSClient(settings.MICROCMS_API_KEY, endpoint)
-    detail = await cms.get_content(content_id, depth=1)
+    # fetch single via list(ids=...) to allow draft without draftKey (API key must allow draft-all)
+    lst = await cms.list_contents(limit=1, offset=0, fields=REQUIRED_FIELDS, ids=[content_id])
+    items = lst.get("contents", [])
+    if not items:
+        return []
+    detail = items[0]
     title, raw_body = _pick_title_and_body(detail)
     normalized, _summary, _full = await normalize_article(
         title=title,
@@ -116,7 +122,11 @@ async def propagate_update(session: AsyncSession, endpoint: str, neighbor_ids: L
             vec = row.embedding  # type: ignore[assignment]
         else:
             # fetch & compute
-            detail = await cms.get_content(nid, depth=1)
+            lst = await cms.list_contents(limit=1, offset=0, fields=REQUIRED_FIELDS, ids=[nid])
+            items = lst.get("contents", [])
+            if not items:
+                continue
+            detail = items[0]
             title, raw_body = _pick_title_and_body(detail)
             normalized, _s, _f = await normalize_article(title, raw_body)
             vec = await embed_text(normalized)
@@ -133,14 +143,14 @@ async def initial_batch(session: AsyncSession, endpoint: str) -> None:
     offset = 0
     page = 0
     while True:
-        lst = await cms.list_contents(limit=100, offset=offset)
+        lst = await cms.list_contents(limit=100, offset=offset, fields=REQUIRED_FIELDS)
         contents = lst.get("contents", [])
         if not contents:
             break
         for item in contents:
             cid = str(item.get("id"))
-            detail = await cms.get_content(cid, depth=1)
-            title, raw_body = _pick_title_and_body(detail)
+            # Use list() response directly (no detail fetch)
+            title, raw_body = _pick_title_and_body(item)
             normalized, _s, _f = await normalize_article(title, raw_body)
             vec = await embed_text(normalized)
             await upsert_article(session, cid, title, normalized, vec)

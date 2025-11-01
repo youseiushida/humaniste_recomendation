@@ -3,7 +3,8 @@ from typing import AsyncIterator
 
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import text
+from sqlalchemy import text, event
+from pgvector.psycopg import register_vector
 
 from .config import settings
 
@@ -17,6 +18,16 @@ engine: AsyncEngine = create_async_engine(
     pool_pre_ping=True,
 )
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+
+# Ensure pgvector types are registered with psycopg (needed for binding params as vector)
+@event.listens_for(engine.sync_engine, "connect")
+def _register_pgvector(dbapi_connection, _record) -> None:  # type: ignore[no-redef]
+    try:
+        register_vector(dbapi_connection)
+    except Exception:
+        # ignore if already registered or not available
+        pass
 
 
 @asynccontextmanager

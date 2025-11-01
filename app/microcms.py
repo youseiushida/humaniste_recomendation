@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import httpx
 
 from .config import settings
@@ -22,10 +22,18 @@ class MicroCMSClient:
             r.raise_for_status()
             return r.json()
 
-    async def list_contents(self, limit: int = 100, offset: int = 0, fields: str | None = None) -> Dict[str, Any]:
+    async def list_contents(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        fields: Optional[str] = None,
+        ids: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         if fields:
             params["fields"] = fields
+        if ids:
+            params["ids"] = ",".join(ids)
         url = f"{BASE_CONTENT_URL}/{self.endpoint}"
         async with httpx.AsyncClient(timeout=60) as client:
             r = await client.get(url, headers=self.headers, params=params)
