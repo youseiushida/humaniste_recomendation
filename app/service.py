@@ -77,7 +77,7 @@ async def neighbors(session: AsyncSession, vec: list[float], self_id: str, k: in
         SELECT id
         FROM article_embeddings
         WHERE id <> :self_id
-        ORDER BY embedding <=> :query
+        ORDER BY embedding <=> CAST(:query AS vector)
         LIMIT :k
         """
     )
